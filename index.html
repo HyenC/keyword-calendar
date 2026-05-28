@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>월별 키워드 캘린더</title>
+  <title>키워드 추천 대시보드</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14,6 +14,7 @@
       min-height: 100vh;
     }
 
+    /* ── Header ── */
     header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
@@ -27,132 +28,127 @@
       letter-spacing: -0.5px;
     }
 
-    header p {
-      margin-top: 0.5rem;
-      opacity: 0.85;
-      font-size: 0.95rem;
+    #monthLabel {
+      margin-top: 0.4rem;
+      opacity: 0.9;
+      font-size: 1rem;
     }
 
-    .year-nav {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 1.5rem;
-      margin-top: 1.5rem;
-    }
-
-    .year-nav button {
+    #counter {
+      display: inline-block;
+      margin-top: 0.8rem;
       background: rgba(255,255,255,0.2);
-      border: none;
-      color: white;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 1.1rem;
-      transition: background 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      padding: 0.25rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
     }
 
-    .year-nav button:hover { background: rgba(255,255,255,0.35); }
-
-    .year-nav span {
-      font-size: 1.3rem;
-      font-weight: 700;
-    }
-
+    /* ── Layout ── */
     .container {
-      max-width: 1100px;
+      max-width: 1020px;
       margin: -1.5rem auto 2rem;
       padding: 0 1rem;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 1rem;
     }
 
-    .month-card {
+    /* ── Keyword Card ── */
+    .keyword-card {
       background: white;
       border-radius: 16px;
       padding: 1.4rem;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.28s;
+      user-select: none;
     }
 
-    .month-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    .keyword-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.11);
     }
 
-    .month-card.current-month {
-      border: 2px solid #667eea;
+    .keyword-card.card-out {
+      opacity: 0;
+      transform: scale(0.88);
+      pointer-events: none;
     }
 
-    .month-header {
+    .keyword-card.card-in {
+      opacity: 0;
+      transform: scale(0.88);
+      transition: none;
+    }
+
+    /* ── Card internals ── */
+    .card-top {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 0.7rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
     }
 
-    .month-badge {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      font-weight: 800;
-      color: white;
-      flex-shrink: 0;
-    }
-
-    .month-name {
-      font-size: 1.05rem;
+    .rank {
+      font-size: 0.8rem;
       font-weight: 700;
+      color: #94a3b8;
     }
 
-    .month-sub {
-      font-size: 0.78rem;
-      color: #888;
-      margin-top: 1px;
+    .priority-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: white;
+      padding: 0.22rem 0.65rem;
+      border-radius: 20px;
+      letter-spacing: 0.02em;
     }
 
-    .keywords {
+    .keyword-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      line-height: 1.3;
+      margin-bottom: 1rem;
+      color: #1e293b;
+      word-break: keep-all;
+    }
+
+    .stats {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 0.45rem;
     }
 
-    .keyword-tag {
-      background: #f0f0f8;
-      color: #444;
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 0.82rem;
-      padding: 0.3rem 0.7rem;
-      border-radius: 20px;
-      font-weight: 500;
-      transition: background 0.2s;
     }
 
-    .keyword-tag:hover {
-      background: #e0e0f5;
+    .stat-label { color: #94a3b8; }
+
+    .stat-value {
+      font-weight: 700;
+      color: #334155;
     }
 
-    .keyword-tag.primary {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
+    .stat-value.stat-up   { color: #16a34a; }
+    .stat-value.stat-down { color: #dc2626; }
+
+    .card-hint {
+      margin-top: 1rem;
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      text-align: center;
     }
 
-    .no-keywords {
-      color: #bbb;
-      font-size: 0.85rem;
-    }
-
+    /* ── States ── */
     .loading {
       text-align: center;
       padding: 4rem 2rem;
@@ -173,27 +169,16 @@
 
     .error-box {
       background: #fff3f3;
-      border: 1px solid #fcc;
+      border: 1px solid #fca5a5;
       border-radius: 12px;
       padding: 1.5rem;
       text-align: center;
-      color: #c00;
+      color: #dc2626;
       margin: 2rem 0;
+      line-height: 1.7;
     }
 
-    .setup-banner {
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      border-radius: 12px;
-      padding: 1.2rem 1.5rem;
-      margin-bottom: 1.5rem;
-      font-size: 0.88rem;
-      color: #92400e;
-      line-height: 1.6;
-    }
-
-    .setup-banner strong { font-weight: 700; }
-
+    /* ── Footer ── */
     footer {
       text-align: center;
       padding: 2rem;
@@ -201,8 +186,38 @@
       font-size: 0.82rem;
     }
 
-    @media (max-width: 480px) {
+    /* ── Priority legend ── */
+    .legend {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.2rem;
+      margin: 1.2rem 0 0;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      color: #fff;
+      opacity: 0.85;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
       header h1 { font-size: 1.4rem; }
+    }
+
+    @media (max-width: 480px) {
       .grid { grid-template-columns: 1fr; }
     }
   </style>
@@ -210,27 +225,31 @@
 <body>
 
 <header>
-  <h1>월별 키워드 캘린더</h1>
-  <p>매월 추천 키워드를 확인하세요</p>
-  <div class="year-nav">
-    <button id="prevYear" title="이전 연도">&#8249;</button>
-    <span id="yearLabel">2026</span>
-    <button id="nextYear" title="다음 연도">&#8250;</button>
+  <h1>키워드 추천 대시보드</h1>
+  <p id="monthLabel">—</p>
+  <div id="counter">—</div>
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#ef4444"></div>긴급
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#f97316"></div>신규수급필요
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#ca8a04"></div>필요
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#22c55e"></div>여유
+    </div>
   </div>
 </header>
 
 <div class="container">
-  <div id="setupBanner" class="setup-banner" style="display:none">
-    <strong>⚙️ 설정 안내:</strong>
-    <code>script.js</code>의 <code>SHEET_CSV_URL</code>에 Google Sheets 공개 CSV URL을 입력하세요.
-    <a href="SETUP.md" target="_blank">설정 방법 보기 &rarr;</a>
-  </div>
-
   <div id="calendarRoot"></div>
 </div>
 
 <footer>
-  월별 키워드 캘린더 &mdash; 관리자는 Google Sheets에서 키워드를 업데이트하세요.
+  키워드를 클릭하면 제거되고 다음 순위 키워드로 자동 교체됩니다.
 </footer>
 
 <script src="script.js"></script>

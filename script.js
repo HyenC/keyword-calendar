@@ -1,136 +1,167 @@
-// ============================================================
-// Google Sheets 공개 CSV URL을 아래에 입력하세요.
-// 설정 방법은 SETUP.md를 참고하세요.
-// ============================================================
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnQeNpiinQXa19q67YIsKqBKawpygHn_gp_VsW7lk6QOYOZVBR5KlEPxSvyqHmhMkzwfYQVlcXQ9L9/pub?gid=0&single=true&output=csv";
 
-// 샘플 데이터 (SHEET_CSV_URL이 비어 있을 때 표시됩니다)
-const SAMPLE_DATA = {
-  2026: {
-    1:  { keywords: ["신년", "목표 설정", "새 출발", "계획"], primary: "신년" },
-    2:  { keywords: ["발렌타인", "겨울 마무리", "설 연휴"], primary: "발렌타인" },
-    3:  { keywords: ["봄", "새 학기", "벚꽃", "환경의 날"], primary: "봄" },
-    4:  { keywords: ["부활절", "봄나들이", "미세먼지", "어린이날 준비"], primary: "봄나들이" },
-    5:  { keywords: ["어린이날", "어버이날", "가정의 달", "황금연휴"], primary: "가정의 달" },
-    6:  { keywords: ["호국보훈", "현충일", "여름 준비", "환경"], primary: "호국보훈" },
-    7:  { keywords: ["휴가", "여름 여행", "바캉스", "물놀이"], primary: "여름 여행" },
-    8:  { keywords: ["광복절", "말복", "피서", "여름 끝"], primary: "광복절" },
-    9:  { keywords: ["추석", "가을", "독서의 달", "등산"], primary: "추석" },
-    10: { keywords: ["한글날", "단풍", "할로윈", "가을 여행"], primary: "단풍" },
-    11: { keywords: ["수능", "블랙프라이데이", "빼빼로", "연말 준비"], primary: "수능" },
-    12: { keywords: ["크리스마스", "연말", "새해 준비", "선물"], primary: "크리스마스" },
-  }
+const PRIORITY_CONFIG = {
+  '긴급':        { bg: '#fef2f2', border: '#fca5a5', badge: '#ef4444' },
+  '신규수급필요': { bg: '#fff7ed', border: '#fdba74', badge: '#f97316' },
+  '필요':        { bg: '#fefce8', border: '#fde68a', badge: '#ca8a04' },
+  '여유':        { bg: '#f0fdf4', border: '#86efac', badge: '#22c55e' },
 };
+const DEFAULT_CONFIG = { bg: '#f8fafc', border: '#e2e8f0', badge: '#64748b' };
 
-const MONTH_NAMES = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
-const MONTH_COLORS = [
-  "#4f46e5","#0ea5e9","#10b981","#f59e0b",
-  "#ef4444","#8b5cf6","#06b6d4","#f97316",
-  "#ec4899","#84cc16","#6366f1","#14b8a6"
-];
+let sortedKeywords = [];
+let activeCards = [];
+let nextIdx = 0;
 
-let currentYear = new Date().getFullYear();
-let allData = {};
+function parseCSVLine(line) {
+  const cols = [];
+  let cur = '', inQ = false;
+  for (const ch of line) {
+    if (ch === '"') inQ = !inQ;
+    else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+    else cur += ch;
+  }
+  cols.push(cur.trim());
+  return cols;
+}
 
-// CSV 파싱 (Google Sheets 형식: month, primary_keyword, keyword1, keyword2, ...)
 function parseCSV(text) {
-  const lines = text.trim().split("\n").slice(1); // 헤더 제거
-  const result = {};
+  const lines = text.trim().split('\n');
+  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+  const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
 
-  for (const line of lines) {
-    const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
-    if (!cols[0]) continue;
-
-    const [yearStr, monthStr, primary, ...rest] = cols;
-    const year = parseInt(yearStr);
-    const month = parseInt(monthStr);
-    if (isNaN(year) || isNaN(month)) continue;
-
-    if (!result[year]) result[year] = {};
-    result[year][month] = {
-      primary: primary || "",
-      keywords: [primary, ...rest].filter(Boolean)
+  return lines.slice(1).filter(l => l.trim()).map(l => {
+    const c = parseCSVLine(l);
+    return {
+      rank: parseInt(c[idx['rank']]) || 0,
+      keyword: (c[idx['keyword']] || '').trim(),
+      predicted_growth_rate: parseFloat(c[idx['predicted_growth_rate']]) || 0,
+      clip_count: parseInt(c[idx['clip_count']]) || 0,
+      priority: (c[idx['priority']] || '').trim(),
+      month: (c[idx['month']] || '').trim(),
     };
-  }
-  return result;
+  }).filter(r => r.rank > 0 && r.keyword);
 }
 
-async function loadData() {
-  if (!SHEET_CSV_URL) {
-    document.getElementById("setupBanner").style.display = "block";
-    return SAMPLE_DATA;
-  }
+function getCurrentMonthStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
-  try {
-    const res = await fetch(SHEET_CSV_URL);
-    if (!res.ok) throw new Error("fetch 실패");
-    const text = await res.text();
-    return parseCSV(text);
-  } catch (e) {
-    console.error("데이터 로드 실패:", e);
-    document.getElementById("calendarRoot").innerHTML = `
-      <div class="error-box">
-        데이터를 불러오는 데 실패했습니다.<br>
-        Google Sheets URL을 확인하거나 네트워크 상태를 점검하세요.
-      </div>`;
-    return null;
+function fmtGrowth(v) {
+  if (isNaN(v)) return '—';
+  return (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+}
+
+function fmtNum(v) {
+  return Number(v).toLocaleString('ko-KR');
+}
+
+function makeCard(kw) {
+  const c = PRIORITY_CONFIG[kw.priority] || DEFAULT_CONFIG;
+  const gr = kw.predicted_growth_rate;
+  const grCls = gr > 0 ? 'stat-up' : gr < 0 ? 'stat-down' : '';
+
+  const el = document.createElement('div');
+  el.className = 'keyword-card';
+  el.dataset.rank = kw.rank;
+  el.style.cssText = `border-color:${c.border};background:${c.bg}`;
+  el.innerHTML = `
+    <div class="card-top">
+      <span class="rank">#${kw.rank}</span>
+      <span class="priority-badge" style="background:${c.badge}">${kw.priority || '미분류'}</span>
+    </div>
+    <div class="keyword-name">${kw.keyword}</div>
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-label">예측 성장률</span>
+        <span class="stat-value ${grCls}">${fmtGrowth(gr)}</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">클립 수</span>
+        <span class="stat-value">${fmtNum(kw.clip_count)}</span>
+      </div>
+    </div>
+    <div class="card-hint">클릭하여 제거</div>`;
+
+  el.addEventListener('click', () => removeCard(kw.rank, el));
+  return el;
+}
+
+function updateCounter() {
+  const remaining = Math.max(0, sortedKeywords.length - nextIdx);
+  const el = document.getElementById('counter');
+  if (el) {
+    el.textContent = remaining > 0
+      ? `대기 키워드 ${remaining}개`
+      : '모든 키워드 표시 완료';
   }
 }
 
-function render(year, data) {
-  const root = document.getElementById("calendarRoot");
-  const now = new Date();
-  const yearData = data[year] || {};
+function removeCard(rank, el) {
+  if (el.dataset.removing) return;
+  el.dataset.removing = '1';
+  el.classList.add('card-out');
 
-  const cards = Array.from({ length: 12 }, (_, i) => {
-    const month = i + 1;
-    const info = yearData[month] || { keywords: [], primary: "" };
-    const isCurrent = now.getFullYear() === year && now.getMonth() + 1 === month;
-    const color = MONTH_COLORS[i];
+  setTimeout(() => {
+    const i = activeCards.findIndex(k => k.rank === rank);
+    if (i === -1) return;
 
-    const tagsHTML = info.keywords.length
-      ? info.keywords.map(k =>
-          `<span class="keyword-tag${k === info.primary ? " primary" : ""}">${k}</span>`
-        ).join("")
-      : `<span class="no-keywords">키워드 없음</span>`;
+    if (nextIdx < sortedKeywords.length) {
+      const next = sortedKeywords[nextIdx++];
+      activeCards[i] = next;
+      const newEl = makeCard(next);
+      newEl.classList.add('card-in');
+      el.replaceWith(newEl);
+      requestAnimationFrame(() => requestAnimationFrame(() => newEl.classList.remove('card-in')));
+    } else {
+      activeCards.splice(i, 1);
+      el.remove();
+    }
+    updateCounter();
+  }, 280);
+}
 
-    return `
-      <div class="month-card${isCurrent ? " current-month" : ""}">
-        <div class="month-header">
-          <div class="month-badge" style="background:${color}">${month}</div>
-          <div>
-            <div class="month-name">${MONTH_NAMES[i]}</div>
-            ${isCurrent ? '<div class="month-sub">이번 달</div>' : ""}
-          </div>
-        </div>
-        <div class="keywords">${tagsHTML}</div>
-      </div>`;
-  });
+function renderGrid() {
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  activeCards.forEach(kw => grid.appendChild(makeCard(kw)));
 
-  root.innerHTML = `<div class="grid">${cards.join("")}</div>`;
-  document.getElementById("yearLabel").textContent = year;
+  const root = document.getElementById('calendarRoot');
+  root.innerHTML = '';
+  root.appendChild(grid);
 }
 
 async function init() {
-  document.getElementById("calendarRoot").innerHTML = `
-    <div class="loading">
-      <div class="spinner"></div>
-      <p>데이터를 불러오는 중...</p>
-    </div>`;
+  const root = document.getElementById('calendarRoot');
+  root.innerHTML = `<div class="loading"><div class="spinner"></div><p>데이터를 불러오는 중...</p></div>`;
 
-  allData = await loadData();
-  if (!allData) return;
+  let rows;
+  try {
+    const res = await fetch(SHEET_CSV_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    rows = parseCSV(await res.text());
+  } catch (e) {
+    console.error('데이터 로드 실패:', e);
+    root.innerHTML = `<div class="error-box">데이터를 불러오지 못했습니다.<br>Google Sheets URL 또는 네트워크를 확인하세요.</div>`;
+    return;
+  }
 
-  render(currentYear, allData);
+  const target = getCurrentMonthStr();
+  sortedKeywords = rows
+    .filter(r => r.month === target)
+    .sort((a, b) => a.rank - b.rank);
 
-  document.getElementById("prevYear").addEventListener("click", () => {
-    currentYear--;
-    render(currentYear, allData);
-  });
-  document.getElementById("nextYear").addEventListener("click", () => {
-    currentYear++;
-    render(currentYear, allData);
-  });
+  if (!sortedKeywords.length) {
+    sortedKeywords = [...rows].sort((a, b) => a.rank - b.rank);
+  }
+
+  const [y, m] = target.split('-');
+  document.getElementById('monthLabel').textContent = `${y}년 ${parseInt(m)}월 추천 키워드`;
+
+  activeCards = sortedKeywords.slice(0, 9);
+  nextIdx = 9;
+  updateCounter();
+  renderGrid();
 }
 
 init();
