@@ -1,5 +1,6 @@
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnQeNpiinQXa19q67YIsKqBKawpygHn_gp_VsW7lk6QOYOZVBR5KlEPxSvyqHmhMkzwfYQVlcXQ9L9/pub?gid=1660025948&single=true&output=csv";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw-gu_vG1mtHRn3v4w5FRuZcWSyMD2Ks5Gnj1mISzHBNxxdrf1dC9Xf3zjD596DyJbw/exec";
+const STOPWORDS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnQeNpiinQXa19q67YIsKqBKawpygHn_gp_VsW7lk6QOYOZVBR5KlEPxSvyqHmhMkzwfYQVlcXQ9L9/pub?gid=2029562547&single=true&output=csv";
 
 const PRIORITY_CONFIG = {
   '긴급':        { bg: '#fef2f2', border: '#fca5a5', badge: '#ef4444' },
@@ -154,11 +155,23 @@ async function init() {
   const root = document.getElementById('calendarRoot');
   root.innerHTML = `<div class="loading"><div class="spinner"></div><p>데이터를 불러오는 중...</p></div>`;
 
-  let rows;
+  let rows, stopwords;
   try {
-    const res = await fetch(SHEET_CSV_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    rows = parseCSV(await res.text());
+    const [sheetRes, stopRes] = await Promise.all([
+      fetch(SHEET_CSV_URL),
+      fetch(STOPWORDS_CSV_URL),
+    ]);
+    if (!sheetRes.ok) throw new Error(`HTTP ${sheetRes.status}`);
+    rows = parseCSV(await sheetRes.text());
+
+    // stopwords 읽기 (keyword 컬럼 첫 번째)
+    const stopText = await stopRes.text();
+    stopwords = new Set(
+      stopText.trim().split('\n')
+        .slice(1)  // 헤더 제외
+        .map(l => l.trim())
+        .filter(l => l)
+    );
   } catch (e) {
     console.error('데이터 로드 실패:', e);
     root.innerHTML = `<div class="error-box">데이터를 불러오지 못했습니다.<br>Google Sheets URL 또는 네트워크를 확인하세요.</div>`;
@@ -167,7 +180,7 @@ async function init() {
 
   const target = getCurrentMonthStr();
   sortedKeywords = rows
-    .filter(r => r.month === target)
+    .filter(r => r.month === target && !stopwords.has(r.keyword))
     .sort((a, b) => a.rank - b.rank);
 
   if (!sortedKeywords.length) {
