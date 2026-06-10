@@ -183,9 +183,11 @@ async function init() {
     .filter(r => r.month === target && !stopwords.has(r.keyword))
     .sort((a, b) => a.rank - b.rank);
 
-  if (!sortedKeywords.length) {
-    sortedKeywords = [...rows].sort((a, b) => a.rank - b.rank);
-  }
+    if (!sortedKeywords.length) {
+      sortedKeywords = rows
+          .filter(r => !stopwords.has(r.keyword))
+          .sort((a, b) => a.rank - b.rank);
+    }
 
   const [y, m] = target.split('-');
   document.getElementById('monthLabel').textContent = `${y}년 ${parseInt(m)}월 추천 키워드`;
