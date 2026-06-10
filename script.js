@@ -84,7 +84,7 @@ function makeCard(kw) {
     </div>
     <div class="card-actions">
       <div class="card-hint">클릭하여 제거</div>
-      <button class="exclude-btn" onclick="excludeKeyword(event, '${kw.keyword}')">제외하기</button>
+      <button class="exclude-btn" onclick="excludeKeyword(event, '${kw.keyword}', ${kw.rank}, this.closest('.keyword-card'))">제외하기</button>
     </div>`;
 
   el.addEventListener('click', () => removeCard(kw.rank, el));
@@ -101,15 +101,16 @@ function updateCounter() {
   }
 }
 
-async function excludeKeyword(event, keyword) {
-  event.stopPropagation();  // 카드 클릭 이벤트 방지
+async function excludeKeyword(event, keyword, rank, el) {
+  event.stopPropagation();
   
   try {
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ keyword }),
     });
-    alert(`'${keyword}' 키워드가 제외 목록에 추가됐어요.`);
+    alert('해당 키워드가 제외 목록에 추가됐어요.');
+    removeCard(rank, el);
   } catch (e) {
     alert('제외 처리 중 오류가 발생했어요.');
   }
