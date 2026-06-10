@@ -102,6 +102,27 @@ function updateCounter() {
   }
 }
 
+async function excludeFromList(keyword, rank) {
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ keyword }),
+    });
+
+    // sortedKeywords에서 제거
+    sortedKeywords = sortedKeywords.filter(k => k.keyword !== keyword);
+
+    // 카드에서도 제거
+    const cardEl = document.querySelector(`.keyword-card[data-rank="${rank}"]`);
+    if (cardEl) removeCard(rank, cardEl);
+
+    // 목록 다시 렌더링
+    renderListView();
+  } catch (e) {
+    alert('제외 처리 중 오류가 발생했어요.');
+  }
+}
+
 async function excludeKeyword(event, keyword, rank, el) {
   event.stopPropagation();
   
@@ -110,8 +131,16 @@ async function excludeKeyword(event, keyword, rank, el) {
       method: 'POST',
       body: JSON.stringify({ keyword }),
     });
-    alert('해당 키워드가 제외 목록에 추가됐어요.');
+    alert('해당 키워드가 제외되었습니다.');
+
+    // sortedKeywords에서 제거
+    sortedKeywords = sortedKeywords.filter(k => k.keyword !== keyword);
+
+    // 카드 제거
     removeCard(rank, el);
+
+    // 목록 뷰도 업데이트
+    if (currentView === 'list') renderListView();
   } catch (e) {
     alert('제외 처리 중 오류가 발생했어요.');
   }
@@ -139,6 +168,52 @@ function removeCard(rank, el) {
     }
     updateCounter();
   }, 280);
+}
+
+let currentView = 'card';
+
+function switchView(view) {
+  currentView = view;
+  document.getElementById('calendarRoot').style.display = view === 'card' ? '' : 'none';
+  document.getElementById('listRoot').style.display = view === 'list' ? '' : 'none';
+  document.getElementById('btnCard').classList.toggle('active', view === 'card');
+  document.getElementById('btnList').classList.toggle('active', view === 'list');
+
+  if (view === 'list') renderListView();
+}
+
+function renderListView() {
+  const root = document.getElementById('listRoot');
+  root.innerHTML = '';
+
+  const table = document.createElement('table');
+  table.className = 'keyword-table';
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>순위</th>
+        <th>키워드</th>
+        <th>우선순위</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+
+  const tbody = table.querySelector('tbody');
+  sortedKeywords.forEach(kw => {
+    const c = PRIORITY_CONFIG[kw.priority] || DEFAULT_CONFIG;
+    const tr = document.createElement('tr');
+    tr.dataset.rank = kw.rank;
+    tr.innerHTML = `
+      <td class="td-rank">#${kw.rank}</td>
+      <td class="td-keyword">${kw.keyword}</td>
+      <td><span class="list-badge" style="background:${c.badge}">${kw.priority}</span></td>
+    `;
+    tr.addEventListener('click', () => excludeFromList(kw.keyword, kw.rank));
+    tbody.appendChild(tr);
+  });
+
+  root.appendChild(table);
 }
 
 function renderGrid() {
