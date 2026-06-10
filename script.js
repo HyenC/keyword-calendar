@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = { bg: '#f8fafc', border: '#e2e8f0', badge: '#64748b' };
 let sortedKeywords = [];
 let activeCards = [];
 let nextIdx = 0;
+let currentView = 'card';
 
 function parseCSVLine(line) {
   const cols = [];
@@ -169,8 +170,6 @@ function removeCard(rank, el) {
     updateCounter();
   }, 280);
 }
-
-let currentView = 'card';
 
 function switchView(view) {
   currentView = view;
