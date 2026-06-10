@@ -1,4 +1,5 @@
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnQeNpiinQXa19q67YIsKqBKawpygHn_gp_VsW7lk6QOYOZVBR5KlEPxSvyqHmhMkzwfYQVlcXQ9L9/pub?gid=1660025948&single=true&output=csv";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw-gu_vG1mtHRn3v4w5FRuZcWSyMD2Ks5Gnj1mISzHBNxxdrf1dC9Xf3zjD596DyJbw/exec";
 
 const PRIORITY_CONFIG = {
   '긴급':        { bg: '#fef2f2', border: '#fca5a5', badge: '#ef4444' },
@@ -81,7 +82,10 @@ function makeCard(kw) {
         <span class="stat-value">${fmtNum(kw.clip_count)}</span>
       </div>
     </div>
-    <div class="card-hint">클릭하여 제거</div>`;
+    <div class="card-actions">
+      <div class="card-hint">클릭하여 제거</div>
+      <button class="exclude-btn" onclick="excludeKeyword(event, '${kw.keyword}')">제외하기</button>
+    </div>`;
 
   el.addEventListener('click', () => removeCard(kw.rank, el));
   return el;
@@ -94,6 +98,20 @@ function updateCounter() {
     el.textContent = remaining > 0
       ? `대기 키워드 ${remaining}개`
       : '모든 키워드 표시 완료';
+  }
+}
+
+async function excludeKeyword(event, keyword) {
+  event.stopPropagation();  // 카드 클릭 이벤트 방지
+  
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ keyword }),
+    });
+    alert(`'${keyword}' 키워드가 제외 목록에 추가됐어요.`);
+  } catch (e) {
+    alert('제외 처리 중 오류가 발생했어요.');
   }
 }
 
