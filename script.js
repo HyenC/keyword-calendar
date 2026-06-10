@@ -167,7 +167,7 @@ async function init() {
     // stopwords 읽기 (keyword 컬럼 첫 번째)
     const stopText = await stopRes.text();
     stopwords = new Set(
-      stopText.trim().split('\n')
+      t.trim().split(/\r?\n/)
         .slice(1)  // 헤더 제외
         .map(l => l.trim())
         .filter(l => l)
