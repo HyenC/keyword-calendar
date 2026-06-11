@@ -94,7 +94,7 @@ function makeCard(kw) {
 }
 
 function updateCounter() {
-  const remaining = Math.max(0, sortedKeywords.length - nextIdx);
+  const remaining = Math.max(0, Math.min(50, sortedKeywords.length) - nextIdx);
   const el = document.getElementById('counter');
   if (el) {
     el.textContent = remaining > 0
@@ -255,20 +255,19 @@ async function init() {
   const target = getCurrentMonthStr();
   sortedKeywords = rows
     .filter(r => r.month === target && !stopwords.has(r.keyword))
-    .sort((a, b) => a.rank - b.rank)
-    .slice(0, 50);
+    .sort((a, b) => a.rank - b.rank);
 
     if (!sortedKeywords.length) {
       sortedKeywords = rows
           .filter(r => !stopwords.has(r.keyword))
-          .sort((a, b) => a.rank - b.rank)
-          .slice(0, 50);
+          .sort((a, b) => a.rank - b.rank);
     }
 
   const [y, m] = target.split('-');
   document.getElementById('monthLabel').textContent = `${y}년 ${parseInt(m)}월 추천 키워드`;
 
-  activeCards = sortedKeywords.slice(0, 9);
+  const displayKeywords = sortedKeywords.slice(0, 50);
+  activeCards = displayKeywords.slice(0, 9);
   nextIdx = 9;
   updateCounter();
   renderGrid();
