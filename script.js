@@ -255,12 +255,14 @@ async function init() {
   const target = getCurrentMonthStr();
   sortedKeywords = rows
     .filter(r => r.month === target && !stopwords.has(r.keyword))
-    .sort((a, b) => a.rank - b.rank);
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, 50);
 
     if (!sortedKeywords.length) {
       sortedKeywords = rows
           .filter(r => !stopwords.has(r.keyword))
-          .sort((a, b) => a.rank - b.rank);
+          .sort((a, b) => a.rank - b.rank)
+          .slice(0, 50);
     }
 
   const [y, m] = target.split('-');
