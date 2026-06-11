@@ -156,7 +156,7 @@ function removeCard(rank, el) {
     const i = activeCards.findIndex(k => k.rank === rank);
     if (i === -1) return;
 
-    if (nextIdx < sortedKeywords.length) {
+    if (nextIdx < sortedKeywords.length && nextIdx < 50) {
       const next = sortedKeywords[nextIdx++];
       activeCards[i] = next;
       const newEl = makeCard(next);
