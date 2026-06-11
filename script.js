@@ -199,7 +199,7 @@ function renderListView() {
   `;
 
   const tbody = table.querySelector('tbody');
-  sortedKeywords.forEach(kw => {
+  sortedKeywords.slice(0, 50).forEach(kw => {
     const c = PRIORITY_CONFIG[kw.priority] || DEFAULT_CONFIG;
     const tr = document.createElement('tr');
     tr.dataset.rank = kw.rank;
